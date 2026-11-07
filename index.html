@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Meu Amigo Médico</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { 
+      font-family: -apple-system, sans-serif; 
+      background: #e0f2f1; 
+      margin: 0; padding: 0; 
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      height: 100vh; height: 100dvh; overflow: hidden; touch-action: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tela { display: none; width: 100%; height: 100%; padding: 15px; flex-direction: column; justify-content: center; align-items: center;}
+    .tela.ativa { display: flex; animation: fadeIn 0.4s; }
+    
+    h1 { color: #004d40; font-size: 28px; margin-bottom: 10px; text-align: center;}
+    
+    /* --- MENU EM GRADE --- */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 95vw;
+      max-width: 400px;
+      margin-top: 10px;
+    }
+    .botao { 
+      background: #007aff; color: white; 
+      padding: 15px 10px; border-radius: 20px; 
+      font-size: 16px; border: none; 
+      font-weight: bold; cursor: pointer;
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      height: 100%; min-height: 80px;
+      text-align: center; line-height: 1.2;
+    }
+    .botao:active { background: #0051d5; transform: scale(0.95); }
+    .botao-pronto { background: #34c759; }
+    
+    /* --- HISTÓRIA --- */
+    .cena-doutor {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      width: 100%; flex: 1; padding-bottom: 10px;
+    }
+    .balao-fala {
+      background: white; border: 4px solid #b2dfdb; border-radius: 25px;
+      padding: 25px 20px; font-size: 24px; color: #004d40; font-weight: 600; 
+      line-height: 1.4; text-align: center; margin-bottom: 25px; position: relative;
+      box-shadow: 0 6px 10px rgba(0,0,0,0.08); width: 95%; max-width: 450px;
+      min-height: 130px; display: flex; align-items: center; justify-content: center;
+      word-wrap: break-word; overflow-wrap: break-word; 
+    }
+    .balao-fala::after {
+      content: ''; position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%);
+      border-width: 20px 20px 0; border-style: solid; border-color: white transparent transparent transparent;
+    }
+    .balao-fala::before {
+      content: ''; position: absolute; bottom: -26px; left: 50%; transform: translateX(-50%);
+      border-width: 20px 20px 0; border-style: solid; border-color: #b2dfdb transparent transparent transparent;
+    }
+    .doutor-emoji { 
+      font-size: 140px; line-height: 1; cursor: pointer; animation: pulsar 2s infinite ease-in-out;
+      transition: transform 0.1s; user-select: none; -webkit-user-select: none; display: block;
+    }
+    .doutor-emoji:active { transform: scale(0.85); animation: none; }
+
+    /* --- JOGOS GERAIS --- */
+    #game-area, #bolhas-area {
+      position: relative; width: 95vw; height: 55vh; background: #ffffff;
+      border-radius: 20px; border: 4px solid #b2dfdb; overflow: hidden; margin-top: 10px;
+    }
+    #target {
+      position: absolute; font-size: 55px; top: 0; left: 0; cursor: pointer;
+      will-change: transform, filter; transition: filter 0.3s ease, font-size 0.3s;
+      user-select: none; -webkit-user-select: none;
+    }
+    .bolha {
+      position: absolute; border-radius: 50%; 
+      box-shadow: inset -5px -5px 15px rgba(0,0,0,0.1), 0 5px 10px rgba(0,0,0,0.1);
+      cursor: pointer; transition: transform 0.2s, opacity 0.3s;
+      animation: flutuarBolha 3s infinite alternate ease-in-out;
+    }
+    .bolha.estourar { transform: scale(1.5); opacity: 0; }
+    
+    /* --- JOGO DO RATINHO --- */
+    #ratinho-area {
+      position: relative; width: 95vw; height: 55vh; 
+      background: linear-gradient(to bottom, #87CEEB 0%, #87CEEB 60%, #a8e6cf 60%, #a8e6cf 100%); 
+      border-radius: 20px; border: 4px solid #b2dfdb; overflow: hidden; margin-top: 10px;
+    }
+    #chao {
+      position: absolute; bottom: 0; width: 100%; height: 60px;
+      background-color: #8B4513; border-top: 5px solid #5c2e0b; z-index: 1;
+      pointer-events: none; /* O chão não bloqueia o toque */
+    }
+    .nuvem { position: absolute; font-size: 40px; color: white; opacity: 0.8; z-index: 0; pointer-events: none; }
+    .sol { position: absolute; top: 10px; right: 15px; font-size: 40px; z-index: 0; pointer-events: none; }
+
+    #ratinho { 
+      position: absolute; font-size: 65px; bottom: 40px; left: 50px; 
+      z-index: 2; pointer-events: none; 
+    }
+    .obstaculo { position: absolute; font-size: 50px; bottom: 40px; right: -60px; z-index: 2; pointer-events: none; }
+    .queijo { position: absolute; font-size: 45px; right: -60px; z-index: 2; pointer-events: none; }
+    
+    #placar-ratinho {
+      position: absolute; top: 10px; left: 15px; font-size: 24px; font-weight: bold; color: #004d40; z-index: 5;
+    }
+    #mensagem-ratinho {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      background: rgba(255,255,255,0.95); padding: 20px; border-radius: 15px;
+      font-size: 24px; font-weight: bold; color: #ff3b30; display: none; z-index: 10;
+      text-align: center; border: 3px solid #ff3b30; pointer-events: none;
+    }
+
+    .game-controls, .bolhas-controls, .ratinho-controls {
+      display: flex; gap: 10px; width: 95vw; max-width: 400px; margin-top: 15px;
+    }
+    .game-controls .botao, .bolhas-controls .botao, .ratinho-controls .botao { 
+      margin-top: 0; flex-direction: row; min-height: 50px;
+    }
+
+    /* --- MODO HORIZONTAL --- */
+    @media (orientation: landscape) {
+      #tela-jogo h1, #tela-jogo p, #tela-bolhas h1, #tela-ratinho h1, #tela-ratinho p { display: none; }
+      #tela-jogo, #tela-bolhas, #tela-ratinho { padding: 0; overflow: hidden; }
+      
+      #game-area, #bolhas-area, #ratinho-area {
+        width: 100vw; height: 100dvh; position: absolute; top: 0; left: 0;
+        border-radius: 0; border: none; margin: 0;
+      }
+      
+      #target { font-size: 160px; }
+      #chao { height: 100px; }
+      #ratinho { font-size: 120px; bottom: 80px; }
+      .obstaculo { font-size: 90px; bottom: 80px; }
+      .queijo { font-size: 80px; }
+      #placar-ratinho { font-size: 40px; }
+      .nuvem { font-size: 80px; }
+      .sol { font-size: 80px; }
+
+      .game-controls, .bolhas-controls, .ratinho-controls {
+        position: absolute; bottom: 10px; z-index: 10; 
+        width: auto; left: 50%; transform: translateX(-50%);
+      }
+      .game-controls .botao, .bolhas-controls .botao, .ratinho-controls .botao { 
+        padding: 10px 15px; font-size: 16px; opacity: 0.5; margin: 0; width: 120px;
+      }
+    }
+
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pulsar { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    @keyframes flutuarBolha { from { transform: translateY(0); } to { transform: translateY(-15px); } }
+  </style>
+</head>
+<body>
+
+  <!-- MENU -->
+  <div id="tela-menu" class="tela ativa">
+    <div style="font-size: 70px; margin-bottom: 5px;">🦖👨‍⚕️</div>
+    <h1>Meu Amigo Médico</h1>
+    <p style="font-size: 18px; color: #00695c; text-align: center; margin: 5px 0 10px 0;">O que vamos fazer?</p>
+    
+    <div class="menu-grid">
+      <button class="botao" onclick="iniciarHistoria()">💬<br>Falar com o Doutor</button>
+      <button class="botao" style="background: #af52de;" onclick="iniciarBolhas()">🫧<br>Estourar Bolhas</button>
+      <button class="botao" style="background: #ff9500;" onclick="mostrarTela('tela-jogo')">👀<br>Jogo dos Olhos</button>
+      <button class="botao" style="background: #ffcc00; color: #333;" onclick="iniciarRatinho()">🐭<br>Ratinho do Queijo</button>
+    </div>
+  </div>
+
+  <!-- HISTÓRIA -->
+  <div id="tela-doutor" class="tela">
+    <div class="cena-doutor">
+      <div class="balao-fala" id="fala-texto">...</div>
+      <label class="doutor-emoji" for="vibra-checkbox" onclick="avancarFala()">
+        👨‍⚕️ <input type="checkbox" id="vibra-checkbox" style="display: none;">
+      </label>
+    </div>
+    <button class="botao" style="background: #8e8e93; width: 60%; padding: 15px; margin-bottom: 15px; font-size: 18px; flex-direction: row;" onclick="sairHistoria()">Sair</button>
+  </div>
+
+  <!-- BOLHAS -->
+  <div id="tela-bolhas" class="tela">
+    <h1 style="margin: 0;">Estoure as Bolhas!</h1>
+    <div id="bolhas-area"></div>
+    <div class="bolhas-controls">
+      <button class="botao" style="background: #8e8e93;" onclick="sairDasBolhas()">Voltar</button>
+    </div>
+  </div>
+
+  <!-- OLHOS -->
+  <div id="tela-jogo" class="tela">
+    <h1 style="margin: 0;">Siga o Dinossauro!</h1>
+    <p style="margin: 5px 0; color: #00695c; font-size: 18px;">Acompanhe com os olhos.</p>
+    <div id="game-area">
+      <div id="target" onclick="tocarDinossauro()">🦖</div>
+    </div>
+    <div class="game-controls">
+      <button class="botao botao-pronto" id="btn-play" onclick="toggleJogo()">▶ Iniciar</button>
+      <button class="botao" style="background: #8e8e93;" onclick="sairDoJogo()">Voltar</button>
+    </div>
+  </div>
+
+  <!-- RATINHO -->
+  <div id="tela-ratinho" class="tela">
+    <h1 style="margin: 0;">Ratinho do Queijo</h1>
+    <p style="margin: 5px 0; color: #00695c; font-size: 18px;">Toque na tela para pular!</p>
+    
+    <!-- CORREÇÃO AQUI: ontouchstart e onmousedown -->
+    <div id="ratinho-area" ontouchstart="pularRatinho(event)" onmousedown="pularRatinho(event)">
+      <div class="sol">☀️</div>
+      <div class="nuvem" style="top: 20px; left: 20%;">☁️</div>
+      <div class="nuvem" style="top: 50px; left: 60%;">☁️</div>
+      
+      <div id="placar-ratinho">🧀 0</div>
+      <div id="mensagem-ratinho">Ops! Tenta de novo! 🐭</div>
+      
+      <div id="chao"></div>
+      <div id="ratinho">🐭</div>
+    </div>
+    
+    <div class="ratinho-controls">
+      <button class="botao botao-pronto" onclick="resetarRatinho()">▶ Jogar</button>
+      <button class="botao" style="background: #8e8e93;" onclick="sairRatinho()">Voltar</button>
+    </div>
+  </div>
+
+  <script>
+    let vozNarrador;
+    function configurarVoz() {
+      if ('speechSynthesis' in window) {
+        vozNarrador = new SpeechSynthesisUtterance();
+        vozNarrador.lang = 'pt-BR'; vozNarrador.rate = 0.9; vozNarrador.pitch = 1.1;
+      }
+    }
+    function falar(texto) {
+      if ('speechSynthesis' in window && vozNarrador) {
+        window.speechSynthesis.cancel();
+        vozNarrador.text = texto.replace(/[\u{1F600}-\u{1F6FF}]/gu, ''); 
+        window.speechSynthesis.speak(vozNarrador);
+      }
+    }
+    function vibrar(tempo = 50) { if (navigator.vibrate) navigator.vibrate(tempo); }
+
+    function mostrarTela(id) {
+      document.querySelectorAll('.tela').forEach(t => t.classList.remove('ativa'));
+      document.getElementById(id).classList.add('ativa');
+      if (id !== 'tela-jogo') pausarJogo();
+      if (id !== 'tela-bolhas') pausarBolhas();
+      if (id !== 'tela-ratinho') pausarRatinho();
+    }
+
+    const roteiroDoutor = [
+      "Olá, amiguinho! Eu sou o Doutor. Toque em mim para continuar!",
+      "Hoje nós vamos cuidar dos seus olhinhos!",
+      "Primeiro, você vai sentar numa cadeira bem confortável.",
+      "Depois, eu vou usar uma luzinha mágica para ver como estão seus olhos.",
+      "A luz é bem brilhante, mas não machuca. Você só precisa olhar rapidinho!",
+      "E pronto! Você foi muito corajoso. Ganhou um adesivo!"
+    ];
+    let passoFala = 0;
+    function iniciarHistoria() {
+      configurarVoz(); passoFala = 0;
+      document.getElementById('fala-texto').innerText = roteiroDoutor[0];
+      mostrarTela('tela-doutor'); falar(roteiroDoutor[0]);
+    }
+    function avancarFala() {
+      vibrar(40); 
+      if (passoFala < roteiroDoutor.length - 1) {
+        passoFala++;
+        document.getElementById('fala-texto').innerText = roteiroDoutor[passoFala];
+        falar(roteiroDoutor[passoFala]);
+      } else { sairHistoria(); }
+    }
+    function sairHistoria() {
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      mostrarTela('tela-menu');
+    }
+
+    let intervalBolhas;
+    const coresBolhas = ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff', '#e6baff'];
+    function iniciarBolhas() {
+      mostrarTela('tela-bolhas');
+      document.getElementById('bolhas-area').innerHTML = ''; 
+      intervalBolhas = setInterval(criarBolha, 800);
+    }
+    function criarBolha() {
+      const area = document.getElementById('bolhas-area');
+      if (!area) return;
+      const bolha = document.createElement('div');
+      bolha.className = 'bolha';
+      const tamanho = Math.floor(Math.random() * 40) + 40; 
+      bolha.style.width = tamanho + 'px'; bolha.style.height = tamanho + 'px';
+      const maxX = area.clientWidth - tamanho; const maxY = area.clientHeight - tamanho;
+      bolha.style.left = Math.floor(Math.random() * maxX) + 'px';
+      bolha.style.top = Math.floor(Math.random() * maxY) + 'px';
+      bolha.style.backgroundColor = coresBolhas[Math.floor(Math.random() * coresBolhas.length)];
+      bolha.onclick = function() {
+        bolha.classList.add('estourar'); vibrar(30);
+        setTimeout(() => { if(bolha.parentElement) bolha.remove(); }, 300);
+      };
+      area.appendChild(bolha);
+      setTimeout(() => {
+        if(bolha.parentElement && !bolha.classList.contains('estourar')) {
+          bolha.style.opacity = '0';
+          setTimeout(() => { if(bolha.parentElement) bolha.remove(); }, 300);
+        }
+      }, 5000);
+    }
+    function pausarBolhas() { clearInterval(intervalBolhas); }
+    function sairDasBolhas() { pausarBolhas(); document.getElementById('bolhas-area').innerHTML = ''; mostrarTela('tela-menu'); }
+
+    const target = document.getElementById('target');
+    const gameArea = document.getElementById('game-area');
+    const btnPlay = document.getElementById('btn-play');
+    let jogando = false, animationId, posX = 50, posY = 50, velX = 1.5, velY = 1.2, corAtual = 0;
+    function toggleJogo() {
+      if (jogando) { pausarJogo(); btnPlay.textContent = '▶ Iniciar'; btnPlay.classList.add('botao-pronto'); } 
+      else { jogando = true; btnPlay.textContent = '⏸ Pausar'; btnPlay.classList.remove('botao-pronto'); moverPersonagem(); }
+    }
+    function pausarJogo() { jogando = false; cancelAnimationFrame(animationId); }
+    function sairDoJogo() {
+      pausarJogo(); btnPlay.textContent = '▶ Iniciar'; btnPlay.classList.add('botao-pronto');
+      posX = 50; posY = 50; target.style.transform = `translate(${posX}px, ${posY}px)`; mostrarTela('tela-menu');
+    }
+    function mudarCorDinossauro() {
+      corAtual += 72; if (corAtual > 360) corAtual -= 360;
+      target.style.filter = `hue-rotate(${corAtual}deg)`; vibrar(30); 
+    }
+    function tocarDinossauro() { mudarCorDinossauro(); }
+    function moverPersonagem() {
+      if (!jogando) return;
+      const maxX = gameArea.clientWidth - target.clientWidth;
+      const maxY = gameArea.clientHeight - target.clientHeight;
+      posX += velX; posY += velY;
+      if (posX >= maxX || posX <= 0) { velX *= -1; posX = posX <= 0 ? 0 : maxX; mudarCorDinossauro(); }
+      if (posY >= maxY || posY <= 0) { velY *= -1; posY = posY <= 0 ? 0 : maxY; mudarCorDinossauro(); }
+      target.style.transform = `translate(${posX}px, ${posY}px)`;
+      animationId = requestAnimationFrame(moverPersonagem);
+    }
+
+    // --- RATINHO ---
+    let ratinhoRodando = false, ratinhoAnimationId;
+    let ratinhoY = 0, ratinhoVelY = 0, gravidade = 0.6, pulando = false; // Ajustado gravidade
+    let pontosRatinho = 0;
+    let obstaculosAtivos = [];
+    let queijosAtivos = [];
+    let tempoUltimoSpawn = 0;
+    const tiposObstaculos = ['🌵', '🪨', '📦']; 
+    
+    function iniciarRatinho() {
+      mostrarTela('tela-ratinho');
+      resetarRatinho();
+    }
+
+    function resetarRatinho() {
+      pausarRatinho();
+      const area = document.getElementById('ratinho-area');
+      document.querySelectorAll('.obstaculo, .queijo').forEach(el => el.remove());
+      
+      obstaculosAtivos = [];
+      queijosAtivos = [];
+      pontosRatinho = 0;
+      document.getElementById('placar-ratinho').innerText = `🧀 0`;
+      document.getElementById('mensagem-ratinho').style.display = 'none';
+      
+      ratinhoY = 0; ratinhoVelY = 0; pulando = false;
+      document.getElementById('ratinho').style.bottom = '40px';
+      
+      setTimeout(() => {
+        ratinhoRodando = true;
+        tempoUltimoSpawn = Date.now();
+        loopRatinho();
+      }, 1000);
+    }
+
+    function pausarRatinho() {
+      ratinhoRodando = false;
+      cancelAnimationFrame(ratinhoAnimationId);
+    }
+
+    function sairRatinho() {
+      pausarRatinho();
+      document.querySelectorAll('.obstaculo, .queijo').forEach(el => el.remove());
+      mostrarTela('tela-menu');
+    }
+
+    function pularRatinho(e) {
+      if(e && e.target.tagName === 'BUTTON') return;
+      
+      if (ratinhoRodando && !pulando) {
+        pulando = true;
+        ratinhoVelY = -16; // Pulo mais forte
+        vibrar(20);
+      }
+    }
+
+    function loopRatinho() {
+      if (!ratinhoRodando) return;
+      const area = document.getElementById('ratinho-area');
+      const ratinho = document.getElementById('ratinho');
+
+      if (pulando) {
+        ratinhoY += ratinhoVelY;
+        ratinhoVelY += gravidade;
+        
+        if (ratinhoY <= 0) {
+          ratinhoY = 0;
+          ratinhoVelY = 0;
+          pulando = false;
+        }
+        ratinho.style.bottom = (40 + ratinhoY) + 'px'; 
+      }
+
+      let agora = Date.now();
+      if (agora - tempoUltimoSpawn > 1800) { 
+        tempoUltimoSpawn = agora;
+        if (Math.random() < 0.4) { criarQueijo(); } else { criarObstaculo(); }
+      }
+
+      const ratinhoRect = ratinho.getBoundingClientRect();
+
+      obstaculosAtivos.forEach((obs, index) => {
+        let pos = parseFloat(obs.style.right);
+        pos += 6; 
+        obs.style.right = pos + 'px';
+        const obsRect = obs.getBoundingClientRect();
+        if (ratinhoRect.left < obsRect.right && ratinhoRect.right > obsRect.left && ratinhoRect.top < obsRect.bottom && ratinhoRect.bottom > obsRect.top) {
+          ratinhoRodando = false;
+          document.getElementById('mensagem-ratinho').style.display = 'block';
+          vibrar(100);
+          setTimeout(() => { resetarRatinho(); }, 1500);
+        }
+        if (pos > area.clientWidth + 100) {
+          obs.remove(); obstaculosAtivos.splice(index, 1);
+        }
+      });
+
+      queijosAtivos.forEach((queijo, index) => {
+        let pos = parseFloat(queijo.style.right);
+        pos += 6;
+        queijo.style.right = pos + 'px';
+        const queijoRect = queijo.getBoundingClientRect();
+        if (ratinhoRect.left < queijoRect.right && ratinhoRect.right > queijoRect.left && ratinhoRect.top < queijoRect.bottom && ratinhoRect.bottom > queijoRect.top) {
+          queijo.remove(); queijosAtivos.splice(index, 1);
+          pontosRatinho++;
+          document.getElementById('placar-ratinho').innerText = `🧀 ${pontosRatinho}`;
+          vibrar(30);
+        }
+        if (pos > area.clientWidth + 100) {
+          queijo.remove(); queijosAtivos.splice(index, 1);
+        }
+      });
+      ratinhoAnimationId = requestAnimationFrame(loopRatinho);
+    }
+
+    function criarObstaculo() {
+      const area = document.getElementById('ratinho-area');
+      const obs = document.createElement('div');
+      obs.className = 'obstaculo';
+      obs.innerText = tiposObstaculos[Math.floor(Math.random() * tiposObstaculos.length)];
+      obs.style.right = '-60px';
+      area.appendChild(obs);
+      obstaculosAtivos.push(obs);
+    }
+
+    function criarQueijo() {
+      const area = document.getElementById('ratinho-area');
+      const queijo = document.createElement('div');
+      queijo.className = 'queijo';
+      queijo.innerText = '🧀';
+      queijo.style.right = '-60px';
+      const alturaAleatoria = Math.floor(Math.random() * 80) + 40;
+      queijo.style.bottom = (40 + alturaAleatoria) + 'px'; 
+      area.appendChild(queijo);
+      queijosAtivos.push(queijo);
+    }
+  </script>
+</body>
+</html>
