@@ -1,0 +1,9 @@
+{
+  "name": "Jogo Medico",
+  "short_name": "JogoMedico",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#e0f2f1",
+  "theme_color": "#007aff",
+  "lang": "pt-BR"
+}
